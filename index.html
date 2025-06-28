@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重要日子倒數</title>
+    
+    <!-- React 和相關庫 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PWA 設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="重要日子倒數">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        button { min-height: 44px; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        #loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to bottom right, #f8fafc, #e0e7ff, #c7d2fe);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div id="loading">
+            <div style="text-align: center;">
+                <div style="width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 20px; color: #6b7280;">載入中...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { 
+            Plus, Heart, Star, Gift, Trash2, Clock, Pin, Upload, X, RotateCcw, 
+            BarChart3, Camera, TrendingUp, List, Download, Share2, MessageCircle, 
+            Send, Copy, ExternalLink 
+        } = lucideReact;
+
+        const CountdownWebApp = () => {
+            const fileInputRef = useRef(null);
+            
+            const [events, setEvents] = useState([
+                {
+                    id: 1,
+                    name: '新年',
+                    date: '2026-01-01',
+                    type: 'holiday',
+                    color: 'from-red-500 to-red-600',
+                    isPinned: true,
+                    customImage: 'https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=600&h=300&fit=crop'
+                },
+                {
+                    id: 2,
+                    name: '我的生日',
+                    date: '2025-08-15',
+                    type: 'birthday',
+                    color: 'from-pink-500 to-pink-600',
+                    isPinned: true,
+                    customImage: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&h=300&fit=crop'
+                }
+            ]);
+            
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [showWidget, setShowWidget] = useState(false);
+            const [dateFormat, setDateFormat] = useState('days');
+            const [currentView, setCurrentView] = useState('events');
+            const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [showShareModal, setShowShareModal] = useState(false);
+            const [shareEvent, setShareEvent] = useState(null);
+            const [newEvent, setNewEvent] = useState({
+                name: '',
+                date: '',
+                type: 'other',
+                customImage: null
+            });
+
+            useEffect(() => {
+                const handleBeforeInstallPrompt = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                    setShowInstallPrompt(true);
+                };
+
+                window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+                return () => {
+                    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                };
+            }, []);
+
+            const handleInstallApp = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`用戶選擇: ${outcome}`);
+                    setDeferredPrompt(null);
+                    setShowInstallPrompt(false);
+                }
+            };
+
+            const eventTypes = {
+                birthday: { icon: Gift, label: '生日', color: 'from-pink-500 to-pink-600' },
+                holiday: { icon: Star, label: '節日', color: 'from-red-500 to-red-600' },
+                anniversary: { icon: Heart, label: '紀念日', color: 'from-purple-500 to-purple-600' },
+                other: { icon: List, label: '其他', color: 'from-blue-500 to-blue-600' }
+            };
+
+            const calculateTimeLeft = (targetDate) => {
+                const now = new Date().getTime();
+                const target = new Date(targetDate).getTime();
+                const difference = target - now;
+
+                if (difference <= 0) {
+                    const pastDays = Math.floor(Math.abs(difference) / (1000 * 60 * 60 * 24));
+                    const pastYears = Math.floor(pastDays / 365);
+                    const pastMonths = Math.floor((pastDays % 365) / 30);
+                    const pastRemainingDays = pastDays % 30;
+                    
+                    return { 
+                        days: 0, 
+                        isPast: true,
+                        pastDays: pastDays,
+                        pastYears: pastYears,
+                        pastMonths: pastMonths,
+                        pastRemainingDays: pastRemainingDays
+                    };
+                }
+
+                const futureDays = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const futureYears = Math.floor(futureDays / 365);
+                const futureMonths = Math.floor((futureDays % 365) / 30);
+                const futureRemainingDays = futureDays % 30;
+
+                return {
+                    days: futureDays,
+                    isPast: false,
+                    pastDays: 0,
+                    years: futureYears,
+                    months: futureMonths,
+                    remainingDays: futureRemainingDays
+                };
+            };
+
+            const formatDetailedTime = (timeLeft) => {
+                if (timeLeft.isPast) {
+                    const { pastYears, pastMonths, pastRemainingDays } = timeLeft;
+                    let parts = [];
+                    if (pastYears > 0) parts.push(`${pastYears}年`);
+                    if (pastMonths > 0) parts.push(`${pastMonths}個月`);
+                    if (pastRemainingDays > 0 || parts.length === 0) parts.push(`${pastRemainingDays}天`);
+                    return parts.join(' ');
+                } else {
+                    const { years, months, remainingDays } = timeLeft;
+                    let parts = [];
+                    if (years > 0) parts.push(`${years}年`);
+                    if (months > 0) parts.push(`${months}個月`);
+                    if (remainingDays > 0 || parts.length === 0) parts.push(`${remainingDays}天`);
+                    return parts.join(' ');
+                }
+            };
+
+            const formatDate = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('zh-TW', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+            };
+
+            const [timeLefts, setTimeLefts] = useState({});
+
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    const newTimeLefts = {};
+                    events.forEach(event => {
+                        newTimeLefts[event.id] = calculateTimeLeft(event.date);
+                    });
+                    setTimeLefts(newTimeLefts);
+                }, 60000);
+
+                const initialTimeLefts = {};
+                events.forEach(event => {
+                    initialTimeLefts[event.id] = calculateTimeLeft(event.date);
+                });
+                setTimeLefts(initialTimeLefts);
+
+                return () => clearInterval(timer);
+            }, [events]);
+
+            const handleImageUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setNewEvent({...newEvent, customImage: e.target.result});
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const removeCustomImage = (eventId = null) => {
+                if (eventId) {
+                    setEvents(events.map(event => 
+                        event.id === eventId ? {...event, customImage: null} : event
+                    ));
+                } else {
+                    setNewEvent({...newEvent, customImage: null});
+                }
+            };
+
+            const addEvent = () => {
+                if (newEvent.name && newEvent.date) {
+                    const event = {
+                        id: Date.now(),
+                        ...newEvent,
+                        color: eventTypes[newEvent.type].color,
+                        isPinned: false
+                    };
+                    setEvents([...events, event]);
+                    setNewEvent({ name: '', date: '', type: 'other', customImage: null });
+                    setShowAddForm(false);
+                }
+            };
+
+            const deleteEvent = (id) => {
+                setEvents(events.filter(event => event.id !== id));
+            };
+
+            const togglePin = (id) => {
+                const pinnedCount = events.filter(event => event.isPinned).length;
+                const eventToToggle = events.find(event => event.id === id);
+                
+                if (!eventToToggle.isPinned && pinnedCount >= 3) {
+                    alert('最多只能釘選 3 個事件！');
+                    return;
+                }
+
+                setEvents(events.map(event =>
+                    event.id === id ? { ...event, isPinned: !event.isPinned } : event
+                ));
+            };
+
+            const pinnedEvents = events.filter(event => event.isPinned).slice(0, 3);
+
+            const getStatistics = () => {
+                const now = new Date();
+                const futureEvents = events.filter(event => new Date(event.date) > now);
+                const pastEvents = events.filter(event => new Date(event.date) <= now);
+                
+                const typeStats = Object.keys(eventTypes).reduce((acc, type) => {
+                    acc[type] = events.filter(event => event.type === type).length;
+                    return acc;
+                }, {});
+
+                return {
+                    total: events.length,
+                    future: futureEvents.length,
+                    past: pastEvents.length,
+                    typeStats,
+                    futureEvents: futureEvents.sort((a, b) => new Date(a.date) - new Date(b.date)),
+                    pastEvents: pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date))
+                };
+            };
+
+            const stats = getStatistics();
+
+            const exportData = () => {
+                const dataStr = JSON.stringify(events, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const exportFileDefaultName = `countdown-events-${new Date().toISOString().slice(0,10)}.json`;
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+            };
+
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedEvents = JSON.parse(e.target.result);
+                            setEvents(importedEvents);
+                            alert('數據導入成功！');
+                        } catch (error) {
+                            alert('導入失敗，請檢查文件格式！');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const shareAppToSocial = (platform) => {
+                const appTitle = '重要日子倒數 Web App';
+                const appDescription = '一個簡潔優雅的倒數計時應用，幫你記錄生命中的重要時刻 ⏰✨';
+                const baseUrl = window.location.href;
+                const fullText = `${appDescription}\n\n🔗 ${baseUrl}\n\n#倒數計時 #重要日子 #時間管理 #生活記錄`;
+                
+                const instagramText = `${appDescription} 🎉\n\n#倒數計時 #重要日子 #時間管理 #生活記錄 #WebApp`;
+                
+                let shareUrl = '';
+                
+                switch (platform) {
+                    case 'twitter':
+                        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(fullText)}`;
+                        break;
+                    case 'facebook':
+                        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(baseUrl)}&quote=${encodeURIComponent(appDescription)}`;
+                        break;
+                    case 'line':
+                        shareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(appDescription)}`;
+                        break;
+                    case 'whatsapp':
+                        shareUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
+                        break;
+                    case 'telegram':
+                        shareUrl = `https://t.me/share/url?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(appDescription)}`;
+                        break;
+                    case 'instagram':
+                        navigator.clipboard.writeText(instagramText);
+                        alert('Instagram 分享文字已複製！\n\n請開啟 Instagram App，貼上文字並添加您的截圖或相關圖片。\n\n建議搭配應用截圖效果更佳！');
+                        return;
+                    case 'copy':
+                        navigator.clipboard.writeText(fullText);
+                        alert('應用分享內容已複製到剪貼板！');
+                        return;
+                    case 'native':
+                        if (navigator.share) {
+                            navigator.share({
+                                title: appTitle,
+                                text: appDescription,
+                                url: baseUrl,
+                            }).catch(error => console.log('分享失敗:', error));
+                        } else {
+                            navigator.clipboard.writeText(baseUrl);
+                            alert('鏈接已複製到剪貼板！');
+                        }
+                        return;
+                    default:
+                        return;
+                }
+                
+                if (shareUrl) {
+                    window.open(shareUrl, '_blank', 'width=600,height=400');
+                }
+            };
+
+            const shareEventToSocial = (event, platform) => {
+                const timeLeft = timeLefts[event.id] || calculateTimeLeft(event.date);
+                const eventIcon = eventTypes[event.type].label;
+                
+                let shareText = '';
+                let shareUrl = '';
+                
+                if (timeLeft.isPast) {
+                    shareText = `🕒 ${event.name} 已經過去 ${timeLeft.pastDays} 天了！這是一個特別的${eventIcon}紀念日 ✨`;
+                } else {
+                    shareText = `⏰ 距離 ${event.name} 還有 ${timeLeft.days} 天！期待這個特別的${eventIcon} 🎉`;
+                }
+                
+                const baseUrl = window.location.href;
+                const fullText = `${shareText}\n\n📅 ${formatDate(event.date)}\n\n用重要日子倒數 App 記錄你的特別時刻：${baseUrl}`;
+                
+                const instagramText = timeLeft.isPast 
+                    ? `${event.name} 已經過去 ${timeLeft.pastDays} 天了！✨ #重要日子 #紀念日 #${eventIcon}`
+                    : `距離 ${event.name} 還有 ${timeLeft.days} 天！🎉 #倒數計時 #重要日子 #${eventIcon}`;
+                
+                switch (platform) {
+                    case 'twitter':
+                        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(fullText)}`;
+                        break;
+                    case 'facebook':
+                        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(baseUrl)}&quote=${encodeURIComponent(shareText)}`;
+                        break;
+                    case 'line':
+                        shareUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(shareText)}`;
+                        break;
+                    case 'whatsapp':
+                        shareUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
+                        break;
+                    case 'telegram':
+                        shareUrl = `https://t.me/share/url?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(shareText)}`;
+                        break;
+                    case 'instagram':
+                        navigator.clipboard.writeText(instagramText);
+                        alert('Instagram 分享文字已複製！\n\n請開啟 Instagram App，貼上文字並添加您的照片或限動背景。\n\n建議搭配事件相關照片效果更佳！');
+                        return;
+                    case 'copy':
+                        navigator.clipboard.writeText(fullText);
+                        alert('分享內容已複製到剪貼板！');
+                        return;
+                    default:
+                        return;
+                }
+                
+                if (shareUrl) {
+                    window.open(shareUrl, '_blank', 'width=600,height=400');
+                }
+            };
+
+            const openShareModal = (event) => {
+                setShareEvent(event);
+                setShowShareModal(true);
+            };
+
+            const closeShareModal = () => {
+                setShowShareModal(false);
+                setShareEvent(null);
+            };
+
+            // 簡化版的 React.createElement 用法
+            return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" },
+                // 安裝提示
+                showInstallPrompt && React.createElement('div', { className: "fixed top-0 left-0 right-0 bg-blue-600 text-white p-4 z-50 flex items-center justify-between" },
+                    React.createElement('div', { className: "flex items-center gap-3" },
+                        React.createElement(Download, { size: 20 }),
+                        React.createElement('span', { className: "text-sm font-medium" }, "安裝這個 App 到你的設備上，獲得更好的體驗！")
+                    ),
+                    React.createElement('div', { className: "flex gap-2" },
+                        React.createElement('button', {
+                            onClick: handleInstallApp,
+                            className: "px-4 py-2 bg-white text-blue-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                        }, "安裝"),
+                        React.createElement('button', {
+                            onClick: () => setShowInstallPrompt(false),
+                            className: "px-4 py-2 bg-blue-700 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors"
+                        }, "稍後")
+                    )
+                ),
+                
+                // 主要內容
+                React.createElement('div', { className: "flex" },
+                    React.createElement('div', { className: "flex-1 p-6 max-w-6xl mx-auto" },
+                        // 標題區域
+                        React.createElement('div', { className: "text-center mb-12" },
+                            React.createElement('div', { className: "inline-flex items-center gap-4 mb-6" },
+                                React.createElement('div', { className: "p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg" },
+                                    React.createElement(Clock, { className: "text-white", size: 32 })
+                                ),
+                                React.createElement('h1', { className: "text-5xl font-black text-gray-800 tracking-tight" }, "重要日子倒數")
+                            ),
+                            React.createElement('p', { className: "text-xl text-gray-600 mb-8" }, "記錄並倒數你生命中的重要時刻"),
+                            
+                            // 會話期間保存提示
+                            React.createElement('div', { className: "mb-4 px-4 py-2 bg-yellow-100 border-l-4 border-yellow-500 rounded-lg" },
+                                React.createElement('p', { className: "text-sm text-yellow-700" },
+                                    React.createElement('strong', {}, "提示："),
+                                    " 數據在當前會話中保存，刷新頁面後會重置為默認狀態。您可以使用導出功能保存數據。"
+                                )
+                            ),
+                            
+                            // 導航和按鈕
+                            React.createElement('div', { className: "flex items-center justify-between gap-4 mb-8" },
+                                React.createElement('div', { className: "flex items-center justify-center gap-2" },
+                                    React.createElement('button', {
+                                        onClick: () => setCurrentView('events'),
+                                        className: `flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${currentView === 'events' ? 'bg-blue-500 text-white shadow-lg' : 'bg-white/80 text-gray-600 hover:bg-white hover:text-blue-600'}`
+                                    },
+                                        React.createElement(List, { size: 18 }),
+                                        React.createElement('span', { className: "hidden sm:inline" }, "事件列表")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => setCurrentView('stats'),
+                                        className: `flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${currentView === 'stats' ? 'bg-blue-500 text-white shadow-lg' : 'bg-white/80 text-gray-600 hover:bg-white hover:text-blue-600'}`
+                                    },
+                                        React.createElement(BarChart3, { size: 18 }),
+                                        React.createElement('span', { className: "hidden sm:inline" }, "統計分析")
+                                    )
+                                ),
+                                React.createElement('div', { className: "flex items-center gap-2" },
+                                    React.createElement('button', {
+                                        onClick: () => setShowShareModal(true),
+                                        className: "p-2 bg-white/80 hover:bg-white text-gray-600 hover:text-blue-600 rounded-lg transition-all duration-200",
+                                        title: "分享應用"
+                                    }, React.createElement(Share2, { size: 18 })),
+                                    React.createElement('button', {
+                                        onClick: exportData,
+                                        className: "p-2 bg-white/80 hover:bg-white text-gray-600 hover:text-green-600 rounded-lg transition-all duration-200",
+                                        title: "導出數據"
+                                    }, React.createElement(Download, { size: 18 })),
+                                    React.createElement('label', {
+                                        className: "p-2 bg-white/80 hover:bg-white text-gray-600 hover:text-purple-600 rounded-lg transition-all duration-200 cursor-pointer",
+                                        title: "導入數據"
+                                    },
+                                        React.createElement(Upload, { size: 18 }),
+                                        React.createElement('input', {
+                                            type: "file",
+                                            accept: ".json",
+                                            onChange: importData,
+                                            className: "hidden"
+                                        })
+                                    )
+                                )
+                            )
+                        ),
+                        
+                        // 顯示添加按鈕和事件列表（簡化版，只顯示基本功能）
+                        currentView === 'events' && React.createElement('div', {},
+                            React.createElement('div', { className: "mb-12 text-center" },
+                                React.createElement('button', {
+                                    onClick: () => setShowAddForm(!showAddForm),
+                                    className: "group inline-flex items-center gap-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-4 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                                },
+                                    React.createElement(Plus, { size: 24, className: "group-hover:rotate-90 transition-transform duration-300" }),
+                                    "添加新事件"
+                                )
+                            ),
+                            
+                            // 事件列表
+                            React.createElement('div', { className: "max-w-4xl mx-auto space-y-4" },
+                                events.length === 0 ? 
+                                    React.createElement('div', { className: "text-center py-16" },
+                                        React.createElement('div', { className: "inline-block p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl" },
+                                            React.createElement(List, { size: 80, className: "mx-auto text-gray-300 mb-6" }),
+                                            React.createElement('p', { className: "text-2xl font-bold text-gray-500 mb-2" }, "還沒有任何事件"),
+                                            React.createElement('p', { className: "text-gray-400" }, "點擊上方按鈕開始記錄重要日子")
+                                        )
+                                    ) :
+                                    events.map(event => {
+                                        const timeLeft = timeLefts[event.id] || calculateTimeLeft(event.date);
+                                        const EventIcon = eventTypes[event.type].icon;
+                                        
+                                        return React.createElement('div', {
+                                            key: event.id,
+                                            className: "group flex items-center gap-4 p-4 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border-l-4"
+                                        },
+                                            React.createElement('div', { className: "flex-shrink-0" },
+                                                React.createElement('div', {
+                                                    className: `w-16 h-16 bg-gradient-to-br ${event.color} rounded-xl flex items-center justify-center`
+                                                }, React.createElement(EventIcon, { size: 24, className: "text-white" }))
+                                            ),
+                                            React.createElement('div', { className: "flex-1 min-w-0" },
+                                                React.createElement('h3', { className: "text-lg font-bold text-gray-800 truncate" }, event.name),
+                                                React.createElement('p', { className: "text-sm text-gray-500" }, formatDate(event.date))
+                                            ),
+                                            React.createElement('div', { className: "flex-shrink-0 text-right" },
+                                                React.createElement('div', {
+                                                    className: `text-3xl font-bold ${timeLeft.isPast ? 'text-gray-400' : 'text-blue-600'}`
+                                                }, `${timeLeft.isPast ? timeLeft.pastDays : timeLeft.days} 天`)
+                                            )
+                                        );
+                                    })
+                            )
+                        ),
+                        
+                        // 統計視圖（簡化版）
+                        currentView === 'stats' && React.createElement('div', { className: "max-w-6xl mx-auto" },
+                            React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-4 gap-6" },
+                                React.createElement('div', { className: "bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white" },
+                                    React.createElement('div', { className: "flex items-center gap-3 mb-2" },
+                                        React.createElement(List, { size: 24 }),
+                                        React.createElement('span', { className: "text-sm font-medium" }, "總事件數")
+                                    ),
+                                    React.createElement('div', { className: "text-3xl font-bold" }, stats.total)
+                                ),
+                                React.createElement('div', { className: "bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white" },
+                                    React.createElement('div', { className: "flex items-center gap-3 mb-2" },
+                                        React.createElement(TrendingUp, { size: 24 }),
+                                        React.createElement('span', { className: "text-sm font-medium" }, "未來事件")
+                                    ),
+                                    React.createElement('div', { className: "text-3xl font-bold" }, stats.future)
+                                ),
+                                React.createElement('div', { className: "bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white" },
+                                    React.createElement('div', { className: "flex items-center gap-3 mb-2" },
+                                        React.createElement(Camera, { size: 24 }),
+                                        React.createElement('span', { className: "text-sm font-medium" }, "已過事件")
+                                    ),
+                                    React.createElement('div', { className: "text-3xl font-bold" }, stats.past)
+                                ),
+                                React.createElement('div', { className: "bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-2xl text-white" },
+                                    React.createElement('div', { className: "flex items-center gap-3 mb-2" },
+                                        React.createElement(Pin, { size: 24 }),
+                                        React.createElement('span', { className: "text-sm font-medium" }, "釘選事件")
+                                    ),
+                                    React.createElement('div', { className: "text-3xl font-bold" }, pinnedEvents.length)
+                                )
+                            )
+                        )
+                    )
+                ),
+                
+                // 分享模態框
+                showShareModal && React.createElement('div', { className: "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" },
+                    React.createElement('div', { className: "bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl transform transition-all" },
+                        React.createElement('div', { className: "bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white" },
+                            React.createElement('div', { className: "flex items-center justify-between" },
+                                React.createElement('h3', { className: "text-xl font-bold flex items-center gap-2" },
+                                    React.createElement(Share2, { size: 24 }),
+                                    shareEvent ? '分享事件' : '分享應用'
+                                ),
+                                React.createElement('button', {
+                                    onClick: closeShareModal,
+                                    className: "text-white/80 hover:text-white p-2 hover:bg-white/20 rounded-lg transition-colors"
+                                }, React.createElement(X, { size: 20 }))
+                            )
+                        ),
+                        React.createElement('div', { className: "p-6" },
+                            // 應用預覽
+                            !shareEvent && React.createElement('div', { className: "mb-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200" },
+                                React.createElement('div', { className: "flex items-center gap-3 mb-3" },
+                                    React.createElement('div', { className: "p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl" },
+                                        React.createElement(Clock, { size: 20, className: "text-white" })
+                                    ),
+                                    React.createElement('div', {},
+                                        React.createElement('h4', { className: "font-bold text-gray-800" }, "重要日子倒數 Web App"),
+                                        React.createElement('p', { className: "text-sm text-gray-600" }, "記錄生命中的重要時刻")
+                                    )
+                                ),
+                                React.createElement('div', { className: "text-center" },
+                                    React.createElement('div', { className: "text-lg font-semibold text-blue-600" }, "⏰ 優雅的倒數計時體驗 ✨"),
+                                    React.createElement('div', { className: "text-sm text-gray-500 mt-1" }, "分享這個實用的 Web App 給朋友們！")
+                                )
+                            ),
+                            
+                            // 分享平台
+                            React.createElement('div', { className: "space-y-3" },
+                                React.createElement('h4', { className: "font-semibold text-gray-700 mb-4" }, "選擇分享平台"),
+                                React.createElement('div', { className: "grid grid-cols-2 gap-3" },
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'instagram') : shareAppToSocial('instagram'),
+                                        className: "flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-600 rounded-xl transition-all duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center" },
+                                            React.createElement(Camera, { size: 16, className: "text-white" })
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "Instagram")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'twitter') : shareAppToSocial('twitter'),
+                                        className: "flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-colors duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center" },
+                                            React.createElement('span', { className: "text-white font-bold text-sm" }, "𝕏")
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "Twitter")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'facebook') : shareAppToSocial('facebook'),
+                                        className: "flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl transition-colors duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center" },
+                                            React.createElement('span', { className: "text-white font-bold text-sm" }, "f")
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "Facebook")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'line') : shareAppToSocial('line'),
+                                        className: "flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl transition-colors duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center" },
+                                            React.createElement(MessageCircle, { size: 16, className: "text-white" })
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "LINE")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'whatsapp') : shareAppToSocial('whatsapp'),
+                                        className: "flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-colors duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center" },
+                                            React.createElement(MessageCircle, { size: 16, className: "text-white" })
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "WhatsApp")
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => shareEvent ? shareEventToSocial(shareEvent, 'copy') : shareAppToSocial('copy'),
+                                        className: "flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl transition-colors duration-200"
+                                    },
+                                        React.createElement('div', { className: "w-8 h-8 bg-gray-500 rounded-lg flex items-center justify-center" },
+                                            React.createElement(Copy, { size: 16, className: "text-white" })
+                                        ),
+                                        React.createElement('span', { className: "font-medium" }, "複製文字")
+                                    )
+                                )
+                            ),
+                            
+                            React.createElement('div', { className: "mt-6 pt-4 border-t border-gray-200" },
+                                React.createElement('button', {
+                                    onClick: closeShareModal,
+                                    className: "w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors duration-200"
+                                }, "取消")
+                            )
+                        )
+                    )
+                ),
+                
+                // 底部版本資訊
+                React.createElement('div', { className: "fixed bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-white/20 text-xs text-gray-600" },
+                    "📱 Web App v1.0 | 會話期間保存"
+                )
+            );
+        };
+
+        ReactDOM.render(React.createElement(CountdownWebApp), document.getElementById('root'));
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
