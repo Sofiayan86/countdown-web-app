@@ -5,13 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>重要日子倒數</title>
     
-    <!-- React 和相關庫 -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone@7.23.4/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- PWA 設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
@@ -23,383 +16,778 @@
     
     <style>
         * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
-        button { min-height: 44px; }
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        #loading {
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 50%, #c7d2fe 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        
+        .header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #1f2937;
+            margin-bottom: 16px;
+            letter-spacing: -0.025em;
+        }
+        
+        .header p {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-bottom: 32px;
+        }
+        
+        .success-banner {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        
+        .success-banner p {
+            color: #065f46;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .nav-buttons {
             display: flex;
             justify-content: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-button {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 44px;
+            display: flex;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(to bottom right, #f8fafc, #e0e7ff, #c7d2fe);
+            gap: 8px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        
+        .nav-button.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        .error-message {
-            color: #dc2626;
-            background: #fee2e2;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px;
+        
+        .nav-button:not(.active) {
+            background: rgba(255, 255, 255, 0.8);
+            color: #6b7280;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .event-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 24px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 16px;
+            border-left: 4px solid #3b82f6;
+            transition: all 0.3s;
+        }
+        
+        .event-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .event-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .event-icon.holiday {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .event-icon.birthday {
+            background: linear-gradient(135deg, #ec4899, #db2777);
+        }
+        
+        .event-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .event-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .event-date {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .event-countdown {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .countdown-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3b82f6;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .countdown-number:hover {
+            transform: scale(1.05);
+        }
+        
+        .countdown-number.past {
+            color: #9ca3af;
+        }
+        
+        .countdown-hint {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+        
+        .stat-card {
+            padding: 24px;
+            border-radius: 20px;
+            color: white;
             text-align: center;
+        }
+        
+        .stat-card.blue {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        
+        .stat-card.green {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .stat-card.purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+        
+        .stat-card.yellow {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+        
+        .share-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            min-height: 44px;
+        }
+        
+        .share-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            padding: 32px;
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .close-button:hover {
+            background: #f3f4f6;
+        }
+        
+        .share-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .share-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: inherit;
+            width: 100%;
+        }
+        
+        .share-option:hover {
+            transform: scale(1.02);
+        }
+        
+        .share-option.twitter {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+        
+        .share-option.facebook {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .share-option.copy {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .share-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .share-icon.twitter {
+            background: #2563eb;
+        }
+        
+        .share-icon.facebook {
+            background: #1e40af;
+        }
+        
+        .share-icon.copy {
+            background: #6b7280;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #6b7280;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .install-prompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #3b82f6;
+            color: white;
+            padding: 16px;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        
+        .install-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .install-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .install-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .install-button.primary {
+            background: white;
+            color: #3b82f6;
+        }
+        
+        .install-button.secondary {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .install-button:hover {
+            opacity: 0.9;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .nav-button {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+            
+            .event-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 16px;
+            }
+            
+            .event-countdown {
+                text-align: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .install-prompt {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div id="loading">
-            <div style="text-align: center;">
-                <div style="width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top: 4px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="margin-top: 20px; color: #6b7280;">載入中...</p>
-                <p id="loadingStatus" style="margin-top: 10px; color: #9ca3af; font-size: 12px;">正在初始化應用程式</p>
-            </div>
+    <div id="installPrompt" class="install-prompt hidden">
+        <span class="install-text">安裝這個 App 到你的設備上，獲得更好的體驗！</span>
+        <div class="install-buttons">
+            <button class="install-button primary" onclick="installApp()">安裝</button>
+            <button class="install-button secondary" onclick="dismissInstall()">稍後</button>
         </div>
     </div>
 
-    <script>
-        // 載入狀態更新
-        function updateLoadingStatus(message) {
-            const statusEl = document.getElementById('loadingStatus');
-            if (statusEl) {
-                statusEl.textContent = message;
-            }
-        }
-
-        // 錯誤處理
-        function showError(message) {
-            const root = document.getElementById('root');
-            root.innerHTML = `
-                <div class="error-message">
-                    <h2>載入失敗</h2>
-                    <p>${message}</p>
-                    <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        重新載入
-                    </button>
+    <div class="container">
+        <div class="header">
+            <div class="header-icon">
+                <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: white;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12,6 12,12 16,14"></polyline>
+                </svg>
+            </div>
+            <h1>重要日子倒數</h1>
+            <p>記錄並倒數你生命中的重要時刻</p>
+            
+            <div class="success-banner">
+                <p><strong>成功！</strong> 應用程式已成功載入並運行。完全不依賴外部資源！</p>
+            </div>
+        </div>
+        
+        <div class="nav-buttons">
+            <button class="nav-button active" onclick="showView('events')" id="eventsBtn">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                事件列表
+            </button>
+            <button class="nav-button" onclick="showView('stats')" id="statsBtn">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                統計分析
+            </button>
+            <button class="share-button" onclick="openShareModal()">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
+                </svg>
+                分享應用
+            </button>
+        </div>
+        
+        <div id="eventsView" class="fade-in">
+            <div class="event-card">
+                <div class="event-icon holiday">
+                    <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24" style="color: white;">
+                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon>
+                        <line x1="12" y1="8" x2="12" y2="16" stroke="white" stroke-width="2"></line>
+                        <line x1="8" y1="12" x2="16" y2="12" stroke="white" stroke-width="2"></line>
+                    </svg>
                 </div>
-            `;
-        }
-
-        // 檢查必要的庫是否載入
-        function checkLibraries() {
-            updateLoadingStatus('檢查必要庫...');
+                <div class="event-info">
+                    <div class="event-name">新年</div>
+                    <div class="event-date" id="newYearDate">2026年1月1日 星期四</div>
+                </div>
+                <div class="event-countdown">
+                    <div class="countdown-number" id="newYearCountdown" onclick="toggleFormat('newYear')">載入中...</div>
+                    <div class="countdown-hint">點擊切換格式</div>
+                </div>
+            </div>
             
-            if (typeof React === 'undefined') {
-                throw new Error('React 未載入');
-            }
-            if (typeof ReactDOM === 'undefined') {
-                throw new Error('ReactDOM 未載入');
-            }
-            if (typeof Babel === 'undefined') {
-                throw new Error('Babel 未載入');
-            }
-            if (typeof lucideReact === 'undefined') {
-                throw new Error('Lucide React 未載入');
-            }
-            
-            updateLoadingStatus('所有庫載入成功');
-        }
-
-        // 等待所有資源載入完成
-        window.addEventListener('load', () => {
-            try {
-                setTimeout(() => {
-                    checkLibraries();
-                    updateLoadingStatus('啟動應用程式...');
-                    
-                    // 轉換並執行 React 代碼
-                    const scriptContent = `
-                        const { useState, useEffect, useRef } = React;
-                        const { 
-                            Plus, Heart, Star, Gift, Trash2, Clock, Pin, Upload, X, RotateCcw, 
-                            BarChart3, Camera, TrendingUp, List, Download, Share2, MessageCircle, 
-                            Send, Copy, ExternalLink 
-                        } = lucideReact;
-
-                        function CountdownWebApp() {
-                            const fileInputRef = useRef(null);
-                            
-                            const [events, setEvents] = useState([
-                                {
-                                    id: 1,
-                                    name: '新年',
-                                    date: '2026-01-01',
-                                    type: 'holiday',
-                                    color: 'from-red-500 to-red-600',
-                                    isPinned: true,
-                                    customImage: 'https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=600&h=300&fit=crop'
-                                },
-                                {
-                                    id: 2,
-                                    name: '我的生日',
-                                    date: '2025-08-15',
-                                    type: 'birthday',
-                                    color: 'from-pink-500 to-pink-600',
-                                    isPinned: true,
-                                    customImage: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&h=300&fit=crop'
-                                }
-                            ]);
-                            
-                            const [showShareModal, setShowShareModal] = useState(false);
-                            const [shareEvent, setShareEvent] = useState(null);
-                            const [currentView, setCurrentView] = useState('events');
-                            const [dateFormat, setDateFormat] = useState('days');
-                            const [timeLefts, setTimeLefts] = useState({});
-
-                            const eventTypes = {
-                                birthday: { icon: Gift, label: '生日', color: 'from-pink-500 to-pink-600' },
-                                holiday: { icon: Star, label: '節日', color: 'from-red-500 to-red-600' },
-                                anniversary: { icon: Heart, label: '紀念日', color: 'from-purple-500 to-purple-600' },
-                                other: { icon: List, label: '其他', color: 'from-blue-500 to-blue-600' }
-                            };
-
-                            const calculateTimeLeft = (targetDate) => {
-                                const now = new Date().getTime();
-                                const target = new Date(targetDate).getTime();
-                                const difference = target - now;
-
-                                if (difference <= 0) {
-                                    const pastDays = Math.floor(Math.abs(difference) / (1000 * 60 * 60 * 24));
-                                    return { 
-                                        days: 0, 
-                                        isPast: true,
-                                        pastDays: pastDays
-                                    };
-                                }
-
-                                const futureDays = Math.floor(difference / (1000 * 60 * 60 * 24));
-                                return {
-                                    days: futureDays,
-                                    isPast: false,
-                                    pastDays: 0
-                                };
-                            };
-
-                            const formatDate = (dateString) => {
-                                const date = new Date(dateString);
-                                return date.toLocaleDateString('zh-TW', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                    weekday: 'long'
-                                });
-                            };
-
-                            useEffect(() => {
-                                const timer = setInterval(() => {
-                                    const newTimeLefts = {};
-                                    events.forEach(event => {
-                                        newTimeLefts[event.id] = calculateTimeLeft(event.date);
-                                    });
-                                    setTimeLefts(newTimeLefts);
-                                }, 60000);
-
-                                const initialTimeLefts = {};
-                                events.forEach(event => {
-                                    initialTimeLefts[event.id] = calculateTimeLeft(event.date);
-                                });
-                                setTimeLefts(initialTimeLefts);
-
-                                return () => clearInterval(timer);
-                            }, [events]);
-
-                            const shareAppToSocial = (platform) => {
-                                const appTitle = '重要日子倒數 Web App';
-                                const appDescription = '一個簡潔優雅的倒數計時應用，幫你記錄生命中的重要時刻 ⏰✨';
-                                const baseUrl = window.location.href;
-                                const fullText = \`\${appDescription}\\n\\n🔗 \${baseUrl}\\n\\n#倒數計時 #重要日子 #時間管理 #生活記錄\`;
-                                
-                                let shareUrl = '';
-                                
-                                switch (platform) {
-                                    case 'twitter':
-                                        shareUrl = \`https://twitter.com/intent/tweet?text=\${encodeURIComponent(fullText)}\`;
-                                        break;
-                                    case 'facebook':
-                                        shareUrl = \`https://www.facebook.com/sharer/sharer.php?u=\${encodeURIComponent(baseUrl)}&quote=\${encodeURIComponent(appDescription)}\`;
-                                        break;
-                                    case 'copy':
-                                        navigator.clipboard.writeText(fullText);
-                                        alert('應用分享內容已複製到剪貼板！');
-                                        return;
-                                    default:
-                                        return;
-                                }
-                                
-                                if (shareUrl) {
-                                    window.open(shareUrl, '_blank', 'width=600,height=400');
-                                }
-                            };
-
-                            const closeShareModal = () => {
-                                setShowShareModal(false);
-                                setShareEvent(null);
-                            };
-
-                            const pinnedEvents = events.filter(event => event.isPinned).slice(0, 3);
-                            const stats = {
-                                total: events.length,
-                                future: events.filter(event => new Date(event.date) > new Date()).length,
-                                past: events.filter(event => new Date(event.date) <= new Date()).length
-                            };
-
-                            return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" },
-                                React.createElement('div', { className: "flex" },
-                                    React.createElement('div', { className: "flex-1 p-6 max-w-6xl mx-auto" },
-                                        // 標題區域
-                                        React.createElement('div', { className: "text-center mb-12" },
-                                            React.createElement('div', { className: "inline-flex items-center gap-4 mb-6" },
-                                                React.createElement('div', { className: "p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg" },
-                                                    React.createElement(Clock, { className: "text-white", size: 32 })
-                                                ),
-                                                React.createElement('h1', { className: "text-5xl font-black text-gray-800 tracking-tight" }, "重要日子倒數")
-                                            ),
-                                            React.createElement('p', { className: "text-xl text-gray-600 mb-8" }, "記錄並倒數你生命中的重要時刻"),
-                                            
-                                            React.createElement('div', { className: "mb-4 px-4 py-2 bg-green-100 border-l-4 border-green-500 rounded-lg" },
-                                                React.createElement('p', { className: "text-sm text-green-700" },
-                                                    React.createElement('strong', {}, "成功！"),
-                                                    " 應用程式已成功載入並運行。"
-                                                )
-                                            ),
-                                            
-                                            React.createElement('div', { className: "flex items-center justify-center gap-4 mb-8" },
-                                                React.createElement('button', {
-                                                    onClick: () => setCurrentView('events'),
-                                                    className: \`px-4 py-2 rounded-xl font-medium transition-all duration-200 \${currentView === 'events' ? 'bg-blue-500 text-white' : 'bg-white/80 text-gray-600'}\`
-                                                }, "事件列表"),
-                                                React.createElement('button', {
-                                                    onClick: () => setCurrentView('stats'),
-                                                    className: \`px-4 py-2 rounded-xl font-medium transition-all duration-200 \${currentView === 'stats' ? 'bg-blue-500 text-white' : 'bg-white/80 text-gray-600'}\`
-                                                }, "統計分析"),
-                                                React.createElement('button', {
-                                                    onClick: () => setShowShareModal(true),
-                                                    className: "p-2 bg-white/80 hover:bg-white text-gray-600 hover:text-blue-600 rounded-lg transition-all duration-200"
-                                                }, React.createElement(Share2, { size: 18 }))
-                                            )
-                                        ),
-                                        
-                                        // 事件列表
-                                        currentView === 'events' && React.createElement('div', { className: "max-w-4xl mx-auto space-y-4" },
-                                            events.map(event => {
-                                                const timeLeft = timeLefts[event.id] || calculateTimeLeft(event.date);
-                                                const EventIcon = eventTypes[event.type].icon;
-                                                
-                                                return React.createElement('div', {
-                                                    key: event.id,
-                                                    className: "flex items-center gap-4 p-4 bg-white rounded-2xl shadow-md border-l-4",
-                                                    style: { borderLeftColor: '#3b82f6' }
-                                                },
-                                                    React.createElement('div', { className: "flex-shrink-0" },
-                                                        event.customImage ? 
-                                                            React.createElement('div', {
-                                                                className: "w-16 h-16 bg-cover bg-center rounded-xl border-2 border-gray-200",
-                                                                style: { backgroundImage: \`url(\${event.customImage})\` }
-                                                            }) :
-                                                            React.createElement('div', {
-                                                                className: \`w-16 h-16 bg-gradient-to-br \${event.color} rounded-xl flex items-center justify-center\`
-                                                            }, React.createElement(EventIcon, { size: 24, className: "text-white" }))
-                                                    ),
-                                                    React.createElement('div', { className: "flex-1" },
-                                                        React.createElement('h3', { className: "text-lg font-bold text-gray-800" }, event.name),
-                                                        React.createElement('p', { className: "text-sm text-gray-500" }, formatDate(event.date))
-                                                    ),
-                                                    React.createElement('div', { className: "text-right" },
-                                                        React.createElement('div', {
-                                                            className: \`text-3xl font-bold \${timeLeft.isPast ? 'text-gray-400' : 'text-blue-600'}\`
-                                                        }, \`\${timeLeft.isPast ? timeLeft.pastDays : timeLeft.days} 天\`)
-                                                    )
-                                                );
-                                            })
-                                        ),
-                                        
-                                        // 統計視圖
-                                        currentView === 'stats' && React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-6" },
-                                            React.createElement('div', { className: "bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white text-center" },
-                                                React.createElement('div', { className: "text-3xl font-bold mb-2" }, stats.total),
-                                                React.createElement('div', { className: "text-sm" }, "總事件數")
-                                            ),
-                                            React.createElement('div', { className: "bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white text-center" },
-                                                React.createElement('div', { className: "text-3xl font-bold mb-2" }, stats.future),
-                                                React.createElement('div', { className: "text-sm" }, "未來事件")
-                                            ),
-                                            React.createElement('div', { className: "bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white text-center" },
-                                                React.createElement('div', { className: "text-3xl font-bold mb-2" }, stats.past),
-                                                React.createElement('div', { className: "text-sm" }, "已過事件")
-                                            )
-                                        )
-                                    )
-                                ),
-                                
-                                // 分享模態框
-                                showShareModal && React.createElement('div', { className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" },
-                                    React.createElement('div', { className: "bg-white rounded-2xl max-w-md w-full p-6" },
-                                        React.createElement('div', { className: "flex items-center justify-between mb-4" },
-                                            React.createElement('h3', { className: "text-xl font-bold" }, "分享應用"),
-                                            React.createElement('button', {
-                                                onClick: closeShareModal,
-                                                className: "p-2 hover:bg-gray-100 rounded-lg"
-                                            }, React.createElement(X, { size: 20 }))
-                                        ),
-                                        React.createElement('div', { className: "grid grid-cols-2 gap-3" },
-                                            React.createElement('button', {
-                                                onClick: () => shareAppToSocial('twitter'),
-                                                className: "flex items-center gap-3 p-3 bg-blue-50 text-blue-600 rounded-xl"
-                                            }, "Twitter"),
-                                            React.createElement('button', {
-                                                onClick: () => shareAppToSocial('facebook'),
-                                                className: "flex items-center gap-3 p-3 bg-blue-50 text-blue-800 rounded-xl"
-                                            }, "Facebook"),
-                                            React.createElement('button', {
-                                                onClick: () => shareAppToSocial('copy'),
-                                                className: "flex items-center gap-3 p-3 bg-gray-50 text-gray-700 rounded-xl"
-                                            }, "複製連結")
-                                        )
-                                    )
-                                ),
-                                
-                                React.createElement('div', { className: "fixed bottom-4 left-4 bg-white/90 rounded-lg px-3 py-2 text-xs text-gray-600" },
-                                    "📱 Web App v1.0"
-                                )
-                            );
-                        }
-
-                        ReactDOM.render(React.createElement(CountdownWebApp), document.getElementById('root'));
-                    `;
-
-                    // 使用 Babel 轉換代碼
-                    const transformedCode = Babel.transform(scriptContent, {
-                        presets: ['react']
-                    }).code;
-
-                    // 執行轉換後的代碼
-                    eval(transformedCode);
-                    
-                }, 1000);
-            } catch (error) {
-                console.error('載入錯誤:', error);
-                showError(error.message || '未知錯誤');
-            }
-        });
-
-        // 全域錯誤處理
-        window.addEventListener('error', (event) => {
-            console.error('全域錯誤:', event.error);
-            showError('應用程式遇到錯誤: ' + event.error.message);
-        });
-    </script>
+            <div class="event-card">
+                <div class="event-icon birthday">
+                    <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24" style="color: white;">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill="none" stroke="white" stroke-width="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6" stroke="white" stroke-width="2"></line>
+                        <line x1="8" y1="2" x2="8" y2="6" stroke="white" stroke-width="2"></line>
+                        <line x1="3" y1="10" x2="21" y2="10" stroke="white" stroke-width="2"></line>
+                    </svg>
+                </div>
+                <div class="event-info">
+                    <div class="event-name">我的生日</div>
+                    <div class="event-date" id="birthdayDate">2025年8月15日 星期五</div>
+                </div>
+                <div class="event-countdown">
+                    <div class="countdown-number" id="birthdayCountdown" onclick="toggleFormat('birthday')">載入中...</div>
+                    <div class="countdown-hint">點擊切換格式</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="statsView" class="hidden">
+            <div class="stats-grid">
+                <div class="stat-card blue">
+                    <div class="stat-number" id="totalEvents">2</div>
+                    <div class="stat-label">總事件數</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-number" id="futureEvents">載入中</div>
+                    <div class="stat-label">未來事件</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-number" id="pastEvents">載入中</div>
+                    <div class="stat-label">已過事件</div>
+                </div>
+                <div class="stat-card yellow">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">釘選事件</div>
+                </div>
+            </div>
+        </div>
+    </div>
     
+    <div id="shareModal" class="modal-overlay hidden" onclick="closeShareModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title">分享應用</div>
+                <button class="close-button" onclick="closeShareModal()">×</button>
+            </div>
+            <div class="share-grid">
+                <button class="share-option twitter" onclick="shareToTwitter()">
+                    <div class="share-icon twitter">𝕏</div>
+                    <span>Twitter</span>
+                </button>
+                <button class="share-option facebook" onclick="shareToFacebook()">
+                    <div class="share-icon facebook">f</div>
+                    <span>Facebook</span>
+                </button>
+                <button class="share-option copy" onclick="copyToClipboard()">
+                    <div class="share-icon copy">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <span>複製連結</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        📱 Web App v1.0 | 完全自包含版本
+    </div>
+
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => {
-                    console.log('Service Worker 註冊失敗:', err);
-                });
-            });
+        // 全域變數
+        let dateFormat = 'days'; // 'days' 或 'detailed'
+        let deferredPrompt;
+        
+        // 事件數據
+        const events = [
+            {
+                id: 'newYear',
+                name: '新年',
+                date: '2026-01-01',
+                type: 'holiday'
+            },
+            {
+                id: 'birthday',
+                name: '我的生日',
+                date: '2025-08-15',
+                type: 'birthday'
+            }
+        ];
+
+        // 計算時間差
+        function calculateTimeLeft(targetDate) {
+            const now = new Date().getTime();
+            const target = new Date(targetDate).getTime();
+            const difference = target - now;
+
+            if (difference <= 0) {
+                const pastDays = Math.floor(Math.abs(difference) / (1000 * 60 * 60 * 24));
+                const pastYears = Math.floor(pastDays / 365);
+                const pastMonths = Math.floor((pastDays % 365) / 30);
+                const pastRemainingDays = pastDays % 30;
+                
+                return { 
+                    days: pastDays, 
+                    isPast: true,
+                    years: pastYears,
+                    months: pastMonths,
+                    remainingDays: pastRemainingDays
+                };
+            }
+
+            const futureDays = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const futureYears = Math.floor(futureDays / 365);
+            const futureMonths = Math.floor((futureDays % 365) / 30);
+            const futureRemainingDays = futureDays % 30;
+
+            return {
+                days: futureDays,
+                isPast: false,
+                years: futureYears,
+                months: futureMonths,
+                remainingDays: futureRemainingDays
+            };
         }
-    </script>
-</body>
-</html>
+
+        // 格式化詳細時間
+        function formatDetailedTime(timeLeft) {
+            if (timeLeft.isPast) {
+                let parts = [];
+                if (timeLeft.years > 0) parts.push(`${timeLeft.years}年`);
+                if (timeLeft.months > 0) parts.push(`${timeLeft.months}個月`);
+                if (timeLeft.remainingDays > 0 || parts.length === 0) parts.push(`${timeLeft.remainingDays}天`);
+                return parts.join(' ');
+            } else {
+                let parts = [];
+                if (timeLeft.years > 0) parts.push(`${timeLeft.years}年`);
+                if (timeLeft.months > 0) parts.push(`${timeLeft.months}個月`);
+                if (timeLeft.remainingDays > 0 || parts.length === 0) parts.push(`${timeLeft.remainingDays}天`);
+                return parts.join(' ');
+            }
+        }
+
+        // 更新倒數顯示
+        function updateCountdown() {
+            events.forEach(event => {
+                const timeLeft = calculateTimeLeft(event.date);
+                const element = document.getElementById(event.id + 'Countdown');
+                
+                if (element) {
+                    if (dateFormat === 'days') {
+                        element.textContent = timeLeft.days + ' 天';
+                    } else {
+                        element.textContent = formatDetailedTime(timeLeft);
+                    }
+                    
+                    element.className = 'countdown-number' + (timeLeft.isPast ? ' past' : '');
+                }
+            });
+            
+            // 更新統計
+            updateStats();
+        }
+
+        // 更新統計數據
+        function updateStats() {
+            const now = new Date();
+            let futureCount = 0;
+            let pastCount = 0;
+            
+            events.forEach(event => {
+                const eventDate = new Date(event.date);
+                if (eventDate > now) {
+                    futureCount++;
+                } else {
+                    pastCount++;
+                }
+            });
+            
+            document.getElementById('futureEvents').textContent = futureCount;
+            document.getElementById('pastEvents').textContent = pastCount;
+        }
+
+        // 切換日期格式
+        function toggleFormat(eventId) {
+            dateFormat = dateFormat === 'days' ? 'detailed' : 'days';
+            updateCountdown();
+        }
+
+        // 顯示視圖
+        function showView(viewName) {
+            // 隱藏所有視圖
+            document.getElementById('eventsView').classList.add('hidden');
+            document.getElementById('statsView').classList.add('hidden');
+            
+            // 顯示選中的視圖
+            document.getElementById(viewName + 'View').classList.remove('hidden');
+            
+            // 更新按鈕狀態
+            document.getElementById('eventsBtn').classList.remove('active');
+            document.getElementById('statsBtn').classList.remove('active');
+            document.getElementById(viewName + 'Btn').classList.add('active');
+        }
+
+        // 分享功能
+        function openShareModal() {
+            document.getElementById('shareModal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModal').classList.add('hidden');
+        }
+
+        function shareToTwitter() {
+            const text = encodeURIComponent('重要日子倒數 Web App - 記錄生命中的重要時刻 ⏰✨');
+            const url = encodeURIComponent(window.location.href);
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+            window.open(twitterUrl, '_blank', 'width=600,height=400');
+            closeShareModal();
+        }
+
+        function shareToFacebook() {
+            const url = encodeURIComponent(window.location.href);
+            const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+            window.open(facebookUrl, '_blank', 'width=600,height=400');
