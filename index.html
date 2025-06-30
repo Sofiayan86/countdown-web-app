@@ -535,9 +535,73 @@
             background: #6b7280;
         }
         
-        .empty-state {
+        .image-upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 24px;
             text-align: center;
-            padding: 64px 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f9fafb;
+            position: relative;
+        }
+        
+        .image-upload-area:hover {
+            border-color: #3b82f6;
+            background: #f0f9ff;
+        }
+        
+        .upload-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .upload-text {
+            font-weight: 600;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .upload-hint {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            margin: 0;
+        }
+        
+        .image-preview {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .image-preview img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .remove-image-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .remove-image-btn:hover {
+            background: rgba(220, 38, 38, 0.8);
         }
         
         .empty-icon {
@@ -717,6 +781,28 @@
                             <div class="type-icon">📅</div>
                             <div class="type-label">其他</div>
                         </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">自訂圖片背景 (選填)</label>
+                    <div id="imageUploadArea" class="image-upload-area">
+                        <div class="upload-placeholder">
+                            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #9ca3af;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <p class="upload-text">點擊上傳圖片</p>
+                            <p class="upload-hint">支援 JPG, PNG, GIF</p>
+                        </div>
+                        <div id="imagePreview" class="image-preview hidden">
+                            <img id="previewImg" src="" alt="預覽圖片">
+                            <button type="button" class="remove-image-btn" onclick="removeCustomImage()">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
                     </div>
                 </div>
                 
@@ -956,7 +1042,7 @@
 
                 return `
                     <div class="event-card">
-                        <div class="event-icon ${eventType.color}">
+                        <div class="event-icon ${eventType.color}" ${event.customImage ? `style="background-image: url(${event.customImage}); background-size: cover; background-position: center; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5);"` : ''}>
                             ${eventType.icon}
                         </div>
                         <div class="event-info">
@@ -1064,9 +1150,103 @@
             });
             document.querySelector('[data-type="other"]').classList.add('selected');
             
+            // 清空圖片
+            clearImagePreview();
+            
             editingEventId = null;
             document.querySelector('.form-title').textContent = '✨ 添加新事件';
             document.querySelector('.btn-primary').textContent = '✨ 創建事件';
+        }
+
+        // 圖片上傳相關功能
+        function setupImageUpload() {
+            const uploadArea = document.getElementById('imageUploadArea');
+            const imageInput = document.getElementById('imageInput');
+            
+            // 點擊上傳區域
+            uploadArea.addEventListener('click', () => {
+                imageInput.click();
+            });
+            
+            // 檔案選擇
+            imageInput.addEventListener('change', handleImageUpload);
+            
+            // 拖拽功能
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#3b82f6';
+                uploadArea.style.background = '#f0f9ff';
+            });
+            
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#d1d5db';
+                uploadArea.style.background = '#f9fafb';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#d1d5db';
+                uploadArea.style.background = '#f9fafb';
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleImageFile(files[0]);
+                }
+            });
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+
+        function handleImageFile(file) {
+            // 檢查文件類型
+            if (!file.type.startsWith('image/')) {
+                alert('請選擇圖片檔案！');
+                return;
+            }
+            
+            // 檢查文件大小 (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('圖片檔案太大，請選擇小於 5MB 的圖片！');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                showImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(imageSrc) {
+            const placeholder = document.querySelector('.upload-placeholder');
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            
+            placeholder.style.display = 'none';
+            preview.classList.remove('hidden');
+            previewImg.src = imageSrc;
+        }
+
+        function clearImagePreview() {
+            const placeholder = document.querySelector('.upload-placeholder');
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            const imageInput = document.getElementById('imageInput');
+            
+            placeholder.style.display = 'flex';
+            preview.classList.add('hidden');
+            previewImg.src = '';
+            imageInput.value = '';
+        }
+
+        function removeCustomImage() {
+            clearImagePreview();
         }
 
         // 取消添加事件
@@ -1081,6 +1261,10 @@
             const date = document.getElementById('eventDate').value;
             const typeOption = document.querySelector('.type-option.selected');
             const type = typeOption ? typeOption.dataset.type : 'other';
+            
+            // 獲取自訂圖片
+            const previewImg = document.getElementById('previewImg');
+            const customImage = previewImg.src || null;
 
             if (!name || !date) {
                 alert('請填寫事件名稱和日期');
@@ -1091,7 +1275,8 @@
                 id: editingEventId || Date.now(),
                 name: name,
                 date: date,
-                type: type
+                type: type,
+                customImage: customImage
             };
 
             if (editingEventId) {
@@ -1130,6 +1315,13 @@
                     option.classList.add('selected');
                 }
             });
+            
+            // 設置自訂圖片
+            if (event.customImage) {
+                showImagePreview(event.customImage);
+            } else {
+                clearImagePreview();
+            }
             
             // 更新表單標題
             document.querySelector('.form-title').textContent = '✏️ 編輯事件';
@@ -1319,6 +1511,9 @@
                     closeShareModal();
                 }
             });
+            
+            // 設置圖片上傳
+            setupImageUpload();
         }
 
         // 初始化
@@ -1354,6 +1549,7 @@
         window.editEvent = editEvent;
         window.deleteEvent = deleteEvent;
         window.shareEvent = shareEvent;
+        window.removeCustomImage = removeCustomImage;
 
         // 頁面載入完成後初始化
         if (document.readyState === 'loading') {
